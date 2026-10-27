@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { parse } from 'cookie';
+import { parseSetCookie } from 'cookie';
 import { checkSession } from './lib/api/serverApi';
 
 const privateRoutes = ['/profile', '/notes'];
@@ -29,17 +29,17 @@ export async function proxy(request: NextRequest) {
             : [setCookie];
 
           for (const cookieStr of cookieArray) {
-            const parsed = parse(cookieStr);
+            const parsed = parseSetCookie(cookieStr);
             const options = {
-              expires: parsed.Expires ? new Date(parsed.Expires) : undefined,
-              path: parsed.Path,
-              maxAge: Number(parsed['Max-Age']),
+              expires: parsed.expires,
+              path: parsed.path,
+              maxAge: parsed.maxAge,
             };
 
-            if (parsed.accessToken)
-              cookieStore.set('accessToken', parsed.accessToken, options);
-            if (parsed.refreshToken)
-              cookieStore.set('refreshToken', parsed.refreshToken, options);
+            if (parsed.name === 'accessToken' && parsed.value)
+              cookieStore.set('accessToken', parsed.value, options);
+            if (parsed.name === 'refreshToken' && parsed.value)
+              cookieStore.set('refreshToken', parsed.value, options);
           }
 
           if (isPublicRoute) {
@@ -53,9 +53,7 @@ export async function proxy(request: NextRequest) {
             });
           }
         }
-      } catch {
-        // сесія не відновилась, діємо як для неавторизованого
-      }
+      } catch {}
     }
 
     if (isPublicRoute) {
